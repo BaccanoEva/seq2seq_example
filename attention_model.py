@@ -186,3 +186,4 @@ def run_inference(sess,reader,model):
     print('infer:  src: {}'.format(' '.join(src)))
     print('infer:  aim: {}'.format(' '.join(aim)))
     print('infer:  inf: {}'.format(' '.join(pre)))
+    
