@@ -1,7 +1,6 @@
 import  tensorflow as tf
 import data
 import os
-import helpers
 import argparse
 from tensorflow.python.layers import core as layers_core
 def add_arguments(parser):
@@ -124,10 +123,12 @@ class Seq2seq(object):
             labels=target_label,
             logits=decoder_logits
         )
-        target_weights = tf.sequence_mask( self.target_sequence_length, self.max_time_step, dtype=decoder_logits.dtype)
+        # TODO: make a check whether it is time_major
+        max_time = tf.shape(self.decoder_targets)[0]
+        target_weights = tf.sequence_mask( self.target_sequence_length, max_time, dtype=decoder_logits.dtype)
         """apply clipped_gradients"""
         parameters = tf.trainable_variables()
-        self.loss = tf.reduce_mean(stepwise_cross_entropy)/tf.to_float(self.batch_size)
+        self.loss = tf.reduce_mean(stepwise_cross_entropy *target_weights )/tf.to_float(self.batch_size)
         gradients = tf.gradients(self.loss, parameters)
         clipped_gradients, gradient_norm = tf.clip_by_global_norm(gradients, self.max_gradient_norm)
 
@@ -186,4 +187,3 @@ def run_inference(sess,reader,model):
     print('infer:  src: {}'.format(' '.join(src)))
     print('infer:  aim: {}'.format(' '.join(aim)))
     print('infer:  inf: {}'.format(' '.join(pre)))
-    
