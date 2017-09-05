@@ -1,4 +1,4 @@
-# Intruduce
+# Introduce
 This is an example for translating cs to en using sequence2sequence with attention_model.
 
 tensorflow version: 1.2.1.
@@ -11,7 +11,8 @@ I will make the code more clear if I have spare time
 ```
 python main.py
 ```
-# data_set
+# Data_set
+After downloading the data,the result should like followings.
 
 ```
 ├── __pycache__
