@@ -76,7 +76,11 @@ class PTBreader(object):
             return vocabuary[self._UNKnow]
         else:
             return vocabuary[word]
-    def id_to_word(self,word,vocabuary):
+    def id_to_word(self,word,flag):
+        if flag == 'src':
+            vocabuary = self.id_src_vocabuary
+        else:
+            vocabuary = self.id_des_vocabuary
         if word not in vocabuary:
             return self._UNKnow
         else:

@@ -203,9 +203,9 @@ def run_inference(sess,reader,model):
     fd =reader.next_feed(model,idx,idy)
     translations = sess.run([model.translations], fd)
     print(translations[0])
-    src = [ reader.id_to_word(item,reader.id_src_vocabuary)  for item in idx[0]]
-    aim = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in idy[0]]
-    pre = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in translations[0][0]]
+    src = [ reader.id_to_word(item,'src')  for item in idx[0]]
+    aim = [ reader.id_to_word(item,'des')  for item in idy[0]]
+    pre = [ reader.id_to_word(item,'src')  for item in translations[0][0]]
     print('inference')
     print('infer:  src: {}'.format(' '.join(src)))
     print('infer:  aim: {}'.format(' '.join(aim)))
