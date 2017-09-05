@@ -3,7 +3,7 @@ import attention_model as model
 import tensorflow as tf
 import os
 import time
-
+import matplotlib.pyplot as plt
 batch_size = 20
 max_time_step = 150 # also is the max length of the sentence
 input_embedding_size =100
@@ -69,8 +69,8 @@ saver = tf.train.Saver()
 """restore"""
 try:
     print("restore model...")
-    #saver.restore(sess, "save_path/file_name.ckpt-???") 
-    saver.restore(sess,mode_restore_path)
+    #saver.restore(sess, "save_path/file_name.ckpt-???")
+    saver.restore(sess,mode_restore_path+"-25")
 except:
     print("canot find model ,now start initializer variables")
     sess.run(tf.global_variables_initializer())
@@ -83,9 +83,14 @@ else:
     print('save graph to {}'.format(summary_path))
 writer = tf.summary.FileWriter(summary_path,graph=graph)
 
+train_loss = []
+test_loss  = []
+
 for epoch in range(500):
     start = time.time()
+    # get  avg_train_loss
     avg_train_loss= model.run_epoch(sess,train_reader,train_model,writer,global_step=epoch)
+    train_loss.append(avg_train_loss)
     _,rate = sess.run([train_model.add_global,train_model.learning_rate])
     end = time.time()
     print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
@@ -95,8 +100,16 @@ for epoch in range(500):
         print('save model to > {}'.format(mode_restore_path))
         saver.save(sess,mode_restore_path,global_step = epoch)
         start = time.time()
+        # get test_loss
         avg_test_loss = model.run_test(sess,train_reader,eval_model)
-        model.run_inference(sess,train_reader,eval_model )
+        test_loss.append(avg_test_loss)
         end = time.time()
         print('Test  used time :{} avg_test_loss is :{}'.format(
                                                        end-start,avg_test_loss))
+    if epoch %10 ==0:
+        model.run_inference(sess,train_reader,eval_model )
+# save figure
+plt.plot(test_loss)
+plt.savefig('test_loss.png')
+plt.plot(train_loss)
+plt.savefig('trainloss.png')

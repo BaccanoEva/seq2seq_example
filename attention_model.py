@@ -167,15 +167,14 @@ class Seq2seq(object):
         self.summaries = tf.summary.merge_all()
 
 def run_epoch(sess,reader,model,writer,global_step):
-    result = reader.NextBatch('test') # modify the data set
+    result = reader.NextBatch('train') # modify the data set
     average_loss   = 0
-
-    for i in range(reader.test_batch_length): # modify this when change data set
+    """modify this when change data set"""
+    for i in range(reader.train_batch_length): # modify this when change data set
         idx,idy = result.__next__()
         fd =reader.next_feed(model,idx,idy)
         start = time.time()
         _, l = sess.run([model.train_op, model.loss], fd)
-        #_, l = sess.run([model.train_op, model.loss], fd)
         average_loss+=l
         end  =time.time()
         if i == 0 :
@@ -193,9 +192,10 @@ def run_epoch(sess,reader,model,writer,global_step):
             print('  aim: {}'.format(' '.join(aim)))
             print('  pre: {}'.format(' '.join(pre[:final_length[1]])))
             #start = time.time()
-    return average_loss/(reader.test_batch_length)# modify this when change data set
+        """modify this when change data set"""
+    return average_loss/(reader.train_batch_length)#
 def run_test(sess,reader,model):
-    result = reader.NextBatch('dev')
+    result = reader.NextBatch('test')
     average_loss   = 0
     start = time.time()
     for i in range(reader.dev_batch_length ):
@@ -205,7 +205,7 @@ def run_test(sess,reader,model):
         average_loss+=l
     return average_loss/(reader.dev_batch_length)
 def run_inference(sess,reader,model):
-    result = reader.NextBatch('test')
+    result = reader.NextBatch('dev')
     idx,idy = result.__next__()
     fd =reader.next_feed(model,idx,idy)
     translations = sess.run([model.translations], fd)
