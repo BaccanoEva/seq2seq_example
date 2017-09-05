@@ -3,25 +3,32 @@ import attention_model as model
 import tensorflow as tf
 import os
 import time
+
 batch_size = 20
 max_time_step = 120 # also is the max length of the sentence
 input_embedding_size =100
 encoder_hidden_units= 100
 attention_unites = 100
 decoder_hidden_units = encoder_hidden_units
-summary_path = 'translate_atten_log_new_api'
-mode_restore_path = 'translate_atten_log_new_api/model/model.ckpt'
+summary_path = 'translate_atten'
+mode_restore_path = 'translate_atten/model/model.ckpt'
 
 """parameter"""
 learning_rate= 0.8
 layer = 2
-is_trainging =True
 
-train_reader =data.PTBreader("./nmt_data/tst2012.vi",
-                             "./nmt_data/tst2012.en",
-                             batch_size =batch_size,
-                             max_time_step=max_time_step)
-
+train_reader =data.PTBreader(
+                  src_train_path = "./nmt_data/train.vi",
+                  des_train_path = "./nmt_data/train.en",
+                  src_test_path  = "./nmt_data/tst2012.vi",
+                  des_test_path  = "./nmt_data/tst2012.en",
+                  src_dev_path   = "./nmt_data/tst2013.vi",
+                  des_dev_path   = "./nmt_data/tst2013.en",
+                  src_vocab_path  = "./nmt_data/vocab.vi",
+                  des_vocab_path  = "./nmt_data/vocab.en",
+                  batch_size =batch_size,
+                  max_time_step=max_time_step
+                 )
 
 with tf.variable_scope("language_model",reuse=None):
     train_model = model.Seq2seq(
@@ -33,7 +40,7 @@ with tf.variable_scope("language_model",reuse=None):
         input_embedding_size = input_embedding_size,
         decoder_hidden_units = decoder_hidden_units,
         learning_rate = learning_rate,
-        is_trainging  =True,
+        is_trainging  ='train',
         layer = layer,
         tgt_sos_id = train_reader.START_ID,
         tgt_eos_id = train_reader.EOS_ID
@@ -49,7 +56,7 @@ with tf.variable_scope("language_model",reuse=True):
         input_embedding_size = input_embedding_size,
         decoder_hidden_units = decoder_hidden_units,
         learning_rate = learning_rate,
-        is_trainging  =False,
+        is_trainging  ='test',
         layer = layer,
         tgt_sos_id = train_reader.START_ID,
         tgt_eos_id = train_reader.EOS_ID
@@ -77,11 +84,17 @@ writer = tf.summary.FileWriter(summary_path,graph=graph)
 
 for epoch in range(500):
     start = time.time()
-    model.run_epoch(sess,train_reader,train_model,writer,global_step=epoch)
+    avg_train_loss= model.run_epoch(sess,train_reader,train_model,writer,global_step=epoch)
     _,rate = sess.run([train_model.add_global,train_model.learning_rate])
+    end = time.time()
+    print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
+                                                    epoch,end-start,avg_train_loss))
+    start = time.time()
+    avg_test_loss = model.run_test(sess,train_reader,eval_model)
     #model.run_inference(sess,train_reader,eval_model )
     end = time.time()
-    print('Epoch:{} used time :{}'.format(epoch,end-start))
+    print('Test  used time :{} avg_test_loss is :{}'.format(
+                                                    end-start,avg_test_loss))
     if epoch %5 ==0 :
         print('learning_rate is rate:{}'.format(rate))
         print('save model to > {}'.format(mode_restore_path))

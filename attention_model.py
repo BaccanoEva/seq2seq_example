@@ -3,6 +3,7 @@ import data
 import os
 import argparse
 from tensorflow.python.layers import core as layers_core
+import time
 def add_arguments(parser):
     """Build ArgumentParser."""
     parser.register("type", "bool", lambda v: v.lower() == "true")
@@ -11,7 +12,13 @@ def add_arguments(parser):
 
 class Seq2seq(object):
     def __init__(self,max_time_step,batch_size,encoder_hidden_num,src_vocab,des_vocab,input_embedding_size
-                 ,decoder_hidden_units,learning_rate,is_trainging,tgt_sos_id,tgt_eos_id,layer = None,max_gradient_norm=1,initial_learning_rate=0.0001):
+                 ,decoder_hidden_units,learning_rate,
+                 is_trainging,
+                 tgt_sos_id,tgt_eos_id,
+                 layer = None,
+                 max_gradient_norm=1,
+                 initial_learning_rate=0.0001
+                 ):
         self.max_time_step = max_time_step
         self.batch_size = batch_size
         self.encoder_hidden_num=encoder_hidden_num
@@ -82,14 +89,14 @@ class Seq2seq(object):
         output_layer = layers_core.Dense( self.des_vocab_size , use_bias=False, name="output_projection")
         """attention wiht decoder"""
         # Helper
-        if self.is_trainging is True:
+        if self.is_trainging is 'train' or self.is_trainging is 'test':
             #training mode
             maximum_iterations= None
             helper = tf.contrib.seq2seq.TrainingHelper(
                 decoder_inputs_embedded, self.decoder_sequence_length, time_major=True)
-        else:
+        elif self.is_trainging is 'inference' :
             #inference
-            maximum_iterations  = tf.round(tf.reduce_max(self.input_sequence_length) * 2)
+            maximum_iterations  = tf.round(tf.reduce_max(self.input_sequence_length) *1.5)
             helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
                 self.decoder_embeddings,
                 tf.fill([self.batch_size], self.tgt_sos_id), self.tgt_eos_id)
@@ -111,12 +118,7 @@ class Seq2seq(object):
         decoder_targets_T =  tf.transpose(self.decoder_targets,[1,0])
 
 
-        """check whether to inference"""
-        if self.is_trainging is False:
-            self.translations = outputs.sample_id  # the size of translations is [batch_size,sentence_length]
-            return
 
-        """"""
         """calcute the loss"""
         target_label = decoder_targets_T
         stepwise_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -126,9 +128,16 @@ class Seq2seq(object):
         # TODO: make a check whether it is time_major
         max_time = tf.shape(self.decoder_targets)[0]
         target_weights = tf.sequence_mask( self.target_sequence_length, max_time, dtype=decoder_logits.dtype)
+        """caculate loss multy by sequence_mask"""
+        self.loss = tf.reduce_mean(stepwise_cross_entropy *target_weights )/tf.to_float(self.batch_size)
+
+        """check whether to inference"""
+        if self.is_trainging != 'train':
+            self.translations = outputs.sample_id  # the size of translations is [batch_size,sentence_length]
+            return
+
         """apply clipped_gradients"""
         parameters = tf.trainable_variables()
-        self.loss = tf.reduce_mean(stepwise_cross_entropy *target_weights )/tf.to_float(self.batch_size)
         gradients = tf.gradients(self.loss, parameters)
         clipped_gradients, gradient_norm = tf.clip_by_global_norm(gradients, self.max_gradient_norm)
 
@@ -157,25 +166,39 @@ class Seq2seq(object):
         self.summaries = tf.summary.merge_all()
 
 def run_epoch(sess,reader,model,writer,global_step):
-    result = reader.NextBatch()
+    result = reader.NextBatch('test') # modify the data set
     average_loss   = 0
-    for i in range(reader.sentence_length // reader.batch_size ):
+    start = time.time()
+    for i in range(reader.test_batch_length): # modify this when change data set
         idx,idy = result.__next__()
         fd =reader.next_feed(model,idx,idy)
         _, l = sess.run([model.train_op, model.loss], fd)
         average_loss+=l
-        if i == 0 :
+        if i ==0 :
+            end  =time.time()
             summa, predict_ , final_length,local_loss = sess.run([model.summaries, model.decoder_prediction,model.final_sequence_lengths,model.loss], fd)
             writer.add_summary(summa)
             src = [ reader.id_to_word(item,reader.id_src_vocabuary)  for item in idx[1]]
             aim = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in idy[1]]
             pre = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in predict_.T[1]]
-            print('  minibatch loss: {}'.format(local_loss))
+            print('In step {} batch loss: {} time_spend:{}'.format(i,local_loss,end-start))
             print('  src: {}'.format(' '.join(src)))
             print('  aim: {}'.format(' '.join(aim)))
             print('  pre: {}'.format(' '.join(pre[:final_length[1]])))
+            start = time.time()
+    return average_loss/(reader.test_batch_length)# modify this when change data set
+def run_test(sess,reader,model):
+    result = reader.NextBatch('dev')
+    average_loss   = 0
+    start = time.time()
+    for i in range(reader.dev_batch_length ):
+        idx,idy = result.__next__()
+        fd =reader.next_feed(model,idx,idy)
+        l = sess.run(model.loss, fd)
+        average_loss+=l
+    return average_loss/(reader.dev_batch_length)
 def run_inference(sess,reader,model):
-    result = reader.NextBatch()
+    result = reader.NextBatch('test')
     idx,idy = result.__next__()
     fd =reader.next_feed(model,idx,idy)
     translations = sess.run([model.translations], fd)
