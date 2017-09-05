@@ -47,4 +47,5 @@ python main.py
 ```
 # Reference
 https://github.com/tensorflow/nmt
+
 https://github.com/ematvey/tensorflow-seq2seq-tutorials/blob/master/1-seq2seq.ipynb
