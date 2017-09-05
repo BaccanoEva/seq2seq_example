@@ -5,7 +5,7 @@ import os
 import time
 
 batch_size = 20
-max_time_step = 120 # also is the max length of the sentence
+max_time_step = 150 # also is the max length of the sentence
 input_embedding_size =100
 encoder_hidden_units= 100
 attention_unites = 100
@@ -14,7 +14,7 @@ summary_path = 'translate_atten'
 mode_restore_path = 'translate_atten/model/model.ckpt'
 
 """parameter"""
-learning_rate= 0.8
+learning_rate= 0.0001
 layer = 2
 
 train_reader =data.PTBreader(
@@ -34,7 +34,7 @@ with tf.variable_scope("language_model",reuse=None):
     train_model = model.Seq2seq(
         max_time_step =max_time_step,
         batch_size= batch_size,
-        encoder_hidden_num =encoder_hidden_units ,
+        encoder_hidden_units =encoder_hidden_units ,
         src_vocab = train_reader.source_voca,
         des_vocab = train_reader.target_voca,
         input_embedding_size = input_embedding_size,
@@ -50,7 +50,7 @@ with tf.variable_scope("language_model",reuse=True):
     eval_model = model.Seq2seq(
         max_time_step =max_time_step,
         batch_size= batch_size,
-        encoder_hidden_num =encoder_hidden_units ,
+        encoder_hidden_units =encoder_hidden_units ,
         src_vocab = train_reader.source_voca,
         des_vocab = train_reader.target_voca,
         input_embedding_size = input_embedding_size,
@@ -69,6 +69,7 @@ saver = tf.train.Saver()
 """restore"""
 try:
     print("restore model...")
+    #saver.restore(sess, "save_path/file_name.ckpt-???") 
     saver.restore(sess,mode_restore_path)
 except:
     print("canot find model ,now start initializer variables")
@@ -89,13 +90,13 @@ for epoch in range(500):
     end = time.time()
     print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
                                                     epoch,end-start,avg_train_loss))
-    start = time.time()
-    avg_test_loss = model.run_test(sess,train_reader,eval_model)
-    #model.run_inference(sess,train_reader,eval_model )
-    end = time.time()
-    print('Test  used time :{} avg_test_loss is :{}'.format(
-                                                    end-start,avg_test_loss))
     if epoch %5 ==0 :
         print('learning_rate is rate:{}'.format(rate))
         print('save model to > {}'.format(mode_restore_path))
         saver.save(sess,mode_restore_path,global_step = epoch)
+        start = time.time()
+        avg_test_loss = model.run_test(sess,train_reader,eval_model)
+        model.run_inference(sess,train_reader,eval_model )
+        end = time.time()
+        print('Test  used time :{} avg_test_loss is :{}'.format(
+                                                       end-start,avg_test_loss))

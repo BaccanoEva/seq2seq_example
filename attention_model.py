@@ -11,7 +11,7 @@ def add_arguments(parser):
     parser.add_argument("--model", type=str, default="train", help="used for what purpose:train,evalate or see .")
 
 class Seq2seq(object):
-    def __init__(self,max_time_step,batch_size,encoder_hidden_num,src_vocab,des_vocab,input_embedding_size
+    def __init__(self,max_time_step,batch_size,encoder_hidden_units,src_vocab,des_vocab,input_embedding_size
                  ,decoder_hidden_units,learning_rate,
                  is_trainging,
                  tgt_sos_id,tgt_eos_id,
@@ -21,11 +21,11 @@ class Seq2seq(object):
                  ):
         self.max_time_step = max_time_step
         self.batch_size = batch_size
-        self.encoder_hidden_num=encoder_hidden_num
+        self.encoder_hidden_units=encoder_hidden_units
         self.src_vocab = src_vocab
         self.des_vocab = des_vocab
-        self.src_vocab_size = len(src_vocab) +1 #because the list start from 0
-        self.des_vocab_size = len(des_vocab) +1
+        self.src_vocab_size = len(src_vocab)
+        self.des_vocab_size = len(des_vocab)
         self.input_embedding_size = input_embedding_size
         self.decoder_hidden_units = decoder_hidden_units
         self.initial_learning_rate = learning_rate
@@ -62,7 +62,7 @@ class Seq2seq(object):
         decoder_inputs_embedded = tf.nn.embedding_lookup(self.decoder_embeddings, self.decoder_inputs)
 
         """Encoder"""
-        enc_lstm_cell = tf.contrib.rnn.BasicLSTMCell(self.encoder_hidden_num)
+        enc_lstm_cell = tf.contrib.rnn.BasicLSTMCell(self.encoder_hidden_units)
 
         # encoder_cell = tf.contrib.rnn.MultiRNNCell([enc_lstm_cell for _ in range(layer)], state_is_tuple=True)
         #encoder_cell = enc_lstm_cell
@@ -77,7 +77,7 @@ class Seq2seq(object):
         attention_mechanism = tf.contrib.seq2seq.LuongAttention(
             self.decoder_hidden_units, attention_states,memory_sequence_length=self.input_sequence_length)
 
-        dec_lstm_cell = tf.contrib.rnn.BasicLSTMCell(self.decoder_hidden_units)
+        dec_lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.decoder_hidden_units)
         # decoder_cell = tf.contrib.rnn.MultiRNNCell([dec_lstm_cell for _ in range(layer)], state_is_tuple=True)
         #decoder_cell = dec_lstm_cell
         # DONE: SET alignment_history=True if record attention are needed
@@ -89,14 +89,15 @@ class Seq2seq(object):
         output_layer = layers_core.Dense( self.des_vocab_size , use_bias=False, name="output_projection")
         """attention wiht decoder"""
         # Helper
-        if self.is_trainging is 'train' or self.is_trainging is 'test':
+        if self.is_trainging == 'train' or self.is_trainging == 'test':
+            print("In train of test set")
             #training mode
             maximum_iterations= None
             helper = tf.contrib.seq2seq.TrainingHelper(
                 decoder_inputs_embedded, self.decoder_sequence_length, time_major=True)
         elif self.is_trainging is 'inference' :
             #inference
-            maximum_iterations  = tf.round(tf.reduce_max(self.input_sequence_length) *1.5)
+            maximum_iterations  = tf.round(tf.reduce_max(self.input_sequence_length) *2)
             helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
                 self.decoder_embeddings,
                 tf.fill([self.batch_size], self.tgt_sos_id), self.tgt_eos_id)
@@ -168,24 +169,30 @@ class Seq2seq(object):
 def run_epoch(sess,reader,model,writer,global_step):
     result = reader.NextBatch('test') # modify the data set
     average_loss   = 0
-    start = time.time()
+
     for i in range(reader.test_batch_length): # modify this when change data set
         idx,idy = result.__next__()
         fd =reader.next_feed(model,idx,idy)
+        start = time.time()
         _, l = sess.run([model.train_op, model.loss], fd)
+        #_, l = sess.run([model.train_op, model.loss], fd)
         average_loss+=l
-        if i ==0 :
-            end  =time.time()
-            summa, predict_ , final_length,local_loss = sess.run([model.summaries, model.decoder_prediction,model.final_sequence_lengths,model.loss], fd)
+        end  =time.time()
+        if i == 0 :
+            #end  =time.time()
+            summa, predict_ , final_length,local_loss = sess.run([model.summaries,
+                                                                model.decoder_prediction,
+                                                                model.final_sequence_lengths,
+                                                                model.loss], fd)
             writer.add_summary(summa)
-            src = [ reader.id_to_word(item,reader.id_src_vocabuary)  for item in idx[1]]
-            aim = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in idy[1]]
-            pre = [ reader.id_to_word(item,reader.id_des_vocabuary)  for item in predict_.T[1]]
-            print('In step {} batch loss: {} time_spend:{}'.format(i,local_loss,end-start))
+            src = [ reader.id_to_word(item,"src")  for item in idx[1]]
+            aim = [ reader.id_to_word(item,"des")  for item in idy[1]]
+            pre = [ reader.id_to_word(item,"des")  for item in predict_.T[1]]
+            print('  minibatch loss:{}'.format(l))
             print('  src: {}'.format(' '.join(src)))
             print('  aim: {}'.format(' '.join(aim)))
             print('  pre: {}'.format(' '.join(pre[:final_length[1]])))
-            start = time.time()
+            #start = time.time()
     return average_loss/(reader.test_batch_length)# modify this when change data set
 def run_test(sess,reader,model):
     result = reader.NextBatch('dev')
@@ -202,11 +209,10 @@ def run_inference(sess,reader,model):
     idx,idy = result.__next__()
     fd =reader.next_feed(model,idx,idy)
     translations = sess.run([model.translations], fd)
-    print(translations[0])
     src = [ reader.id_to_word(item,'src')  for item in idx[0]]
     aim = [ reader.id_to_word(item,'des')  for item in idy[0]]
     pre = [ reader.id_to_word(item,'src')  for item in translations[0][0]]
-    print('inference')
-    print('infer:  src: {}'.format(' '.join(src)))
-    print('infer:  aim: {}'.format(' '.join(aim)))
-    print('infer:  inf: {}'.format(' '.join(pre)))
+    print('\nInference\n')
+    print('  src: {}'.format(' '.join(src)))
+    print('  aim: {}'.format(' '.join(aim)))
+    print('  inf: {}'.format(' '.join(pre)))
