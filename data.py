@@ -109,8 +109,8 @@ class PTBreader(object):
         origin_des = ['None' for i in  range(self.batch_size)]
         while True:
             for i in range(self.batch_size):
-                    origin_src[i] =  source.readline()
-                    origin_des[i] =  target.readline()
+                    origin_src[i] =  source.readline().strip('\r')
+                    origin_des[i] =  target.readline().strip('\r')
             yield (self.sentence_to_id(origin_src,self.source_voca),self.sentence_to_id(origin_des,self.target_voca))
 
     """batch the input list into a sized np.array to feed the data """

@@ -4,21 +4,35 @@ import tensorflow as tf
 import os
 import time
 import matplotlib.pyplot as plt
-
+import argparse
 """parameter"""
+def add_arguments(parser):
+    parser.add_argument("--src_language",type=str,default="vi",help="the source of language")
+    parser.add_argument("--des_language",type=str,default="en",help="the target of language")
+    parser.add_argument("--summary_path",type=str,default="translate_atten",help="the path of summary")
+
+
+nmt_parser = argparse.ArgumentParser()
+add_arguments(nmt_parser)
+args = nmt_parser.parse_args()
+
+#TODO: convert these variables to parameters
 batch_size = 20
 max_time_step = 150 # also is the max length of the sentence
 input_embedding_size =100
 encoder_hidden_units= 100
 attention_unites = 100
 decoder_hidden_units = encoder_hidden_units
-summary_path = 'translate_atten'
-mode_restore_path = 'translate_atten/model/model.ckpt'
+summary_path = args.summary_path
+mode_restore_path = os.path.join(args.summary_path,"model/model.ckpt")
+#mode_restore_path = 'translate_atten/model/model.ckpt'
 
 learning_rate= 0.0001
 layer = 2
-src_language ='.'+'cs'
-des_language ='.'+'en'
+src_language ='.'+ args.src_language
+des_language ='.'+ args.des_language
+
+
 train_reader =data.PTBreader(
                   src_train_path = "./nmt_data/train"+src_language,
                   des_train_path = "./nmt_data/train"+des_language,
