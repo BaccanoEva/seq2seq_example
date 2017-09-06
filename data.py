@@ -60,7 +60,7 @@ class PTBreader(object):
         voc = [self._PAD]
         with codecs.open(path,"r","utf") as fp:
             for line in fp:
-                voc.append(line.strip('\n'))
+                voc.append(line.strip('\n').strip('\r'))
         vocabuary = dict(zip(voc,range(0,len(voc))))
         return vocabuary
     def _get_vocabary(self):
