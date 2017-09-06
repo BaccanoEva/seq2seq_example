@@ -177,7 +177,7 @@ def run_epoch(sess,reader,model,writer,global_step):
         _, l = sess.run([model.train_op, model.loss], fd)
         average_loss+=l
         end  =time.time()
-        if i == 0 :
+        if i % 20 == 0 :
             #end  =time.time()
             summa, predict_ , final_length,local_loss = sess.run([model.summaries,
                                                                 model.decoder_prediction,
@@ -187,7 +187,7 @@ def run_epoch(sess,reader,model,writer,global_step):
             src = [ reader.id_to_word(item,"src")  for item in idx[1]]
             aim = [ reader.id_to_word(item,"des")  for item in idy[1]]
             pre = [ reader.id_to_word(item,"des")  for item in predict_.T[1]]
-            print('  minibatch loss:{}'.format(l))
+            print('step:{} , minibatch loss:{}'.format(i,l))
             print('  src: {}'.format(' '.join(src)))
             print('  aim: {}'.format(' '.join(aim)))
             print('  pre: {}'.format(' '.join(pre[:final_length[1]])))

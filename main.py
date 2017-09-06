@@ -4,6 +4,8 @@ import tensorflow as tf
 import os
 import time
 import matplotlib.pyplot as plt
+
+"""parameter"""
 batch_size = 20
 max_time_step = 150 # also is the max length of the sentence
 input_embedding_size =100
@@ -13,19 +15,19 @@ decoder_hidden_units = encoder_hidden_units
 summary_path = 'translate_atten'
 mode_restore_path = 'translate_atten/model/model.ckpt'
 
-"""parameter"""
 learning_rate= 0.0001
 layer = 2
-
+src_language ='.'+'cs'
+des_language ='.'+'en'
 train_reader =data.PTBreader(
-                  src_train_path = "./nmt_data/train.vi",
-                  des_train_path = "./nmt_data/train.en",
-                  src_test_path  = "./nmt_data/tst2012.vi",
-                  des_test_path  = "./nmt_data/tst2012.en",
-                  src_dev_path   = "./nmt_data/tst2013.vi",
-                  des_dev_path   = "./nmt_data/tst2013.en",
-                  src_vocab_path  = "./nmt_data/vocab.vi",
-                  des_vocab_path  = "./nmt_data/vocab.en",
+                  src_train_path = "./nmt_data/train"+src_language,
+                  des_train_path = "./nmt_data/train"+des_language,
+                  src_test_path  = "./nmt_data/tst2012"+src_language,
+                  des_test_path  = "./nmt_data/tst2012"+des_language,
+                  src_dev_path   = "./nmt_data/tst2013"+src_language,
+                  des_dev_path   = "./nmt_data/tst2013"+des_language,
+                  src_vocab_path  = "./nmt_data/vocab"+src_language,
+                  des_vocab_path  = "./nmt_data/vocab"+des_language,
                   batch_size =batch_size,
                   max_time_step=max_time_step
                  )
