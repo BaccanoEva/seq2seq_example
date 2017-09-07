@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import argparse
 """parameter"""
 def add_arguments(parser):
-    parser.add_argument("--src_language",type=str,default="vi",help="the source of language")
+    parser.add_argument("--src_language",type=str,default="cs",help="the source of language")
     parser.add_argument("--des_language",type=str,default="en",help="the target of language")
     parser.add_argument("--summary_path",type=str,default="translate_atten",help="the path of summary")
 
@@ -102,28 +102,31 @@ writer = tf.summary.FileWriter(summary_path,graph=graph)
 train_loss = []
 test_loss  = []
 
-for epoch in range(500):
-    start = time.time()
-    # get  avg_train_loss
-    avg_train_loss= model.run_epoch(sess,train_reader,train_model,writer,global_step=epoch)
-    train_loss.append(avg_train_loss)
-    _,rate = sess.run([train_model.add_global,train_model.learning_rate])
-    end = time.time()
-    print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
-                                                    epoch,end-start,avg_train_loss))
-    if epoch %5 ==0 :
-        print('learning_rate is rate:{}'.format(rate))
-        print('save model to > {}'.format(mode_restore_path))
-        saver.save(sess,mode_restore_path,global_step = epoch)
+# use sess.as_default() we can directly use  model.global_step.eval() instead of sess.run()
+# may sess.as_default() only need to be used once ? I will checkout it
+with sess.as_default():
+    for epoch in range(500):
         start = time.time()
-        # get test_loss
-        avg_test_loss = model.run_test(sess,train_reader,eval_model)
-        test_loss.append(avg_test_loss)
+        # get  avg_train_loss
+        avg_train_loss= model.run_epoch(sess,train_reader,train_model,writer)
+        train_loss.append(avg_train_loss)
+        rate = train_model.learning_rate.eval()
         end = time.time()
-        print('Test  used time :{} avg_test_loss is :{}'.format(
-                                                       end-start,avg_test_loss))
-    if epoch %10 ==0:
-        model.run_inference(sess,train_reader,eval_model )
+        print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
+                                                        epoch,end-start,avg_train_loss))
+        if epoch %5 ==0 :
+            print('learning_rate is rate:{}'.format(rate))
+            print('save model to > {}'.format(mode_restore_path))
+            saver.save(sess,mode_restore_path,global_step = train_model.global_step.eval())
+            start = time.time()
+            # get test_loss
+            avg_test_loss = model.run_test(sess,train_reader,eval_model)
+            test_loss.append(avg_test_loss)
+            end = time.time()
+            print('Test  used time :{} avg_test_loss is :{}'.format(
+                                                           end-start,avg_test_loss))
+        if epoch %10 ==0:
+            model.run_inference(sess,train_reader,eval_model )
 # save figure
 plt.plot(test_loss)
 plt.savefig('test_loss.png')

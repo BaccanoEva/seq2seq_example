@@ -1,14 +1,8 @@
 import  tensorflow as tf
 import data
 import os
-import argparse
 from tensorflow.python.layers import core as layers_core
 import time
-def add_arguments(parser):
-    """Build ArgumentParser."""
-    parser.register("type", "bool", lambda v: v.lower() == "true")
-    # network
-    parser.add_argument("--model", type=str, default="train", help="used for what purpose:train,evalate or see .")
 
 class Seq2seq(object):
     def __init__(self,max_time_step,batch_size,encoder_hidden_units,src_vocab,des_vocab,input_embedding_size
@@ -52,11 +46,10 @@ class Seq2seq(object):
         """set the decay learning_rate"""
         # TODO: I don't konw whether to keep this learning_rate when inference because there may meet errors
         # when I want to restore the Variable but the Variable learning_rate don't exist
-        global_step = tf.Variable(0, trainable=False)
+        self.global_step = tf.Variable(0, trainable=False)
         self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
-                                                   global_step=global_step,
+                                                   global_step=self.global_step,
                                                    decay_steps=500,decay_rate=0.9)
-        self.add_global = global_step.assign_add(1)
         """Embedding"""
         encoder_inputs_embedded = tf.nn.embedding_lookup(self.encoder_embeddings, self.encoder_inputs)
         decoder_inputs_embedded = tf.nn.embedding_lookup(self.decoder_embeddings, self.decoder_inputs)
@@ -144,7 +137,8 @@ class Seq2seq(object):
 
         """add train op"""
         optimizer = tf.train.AdamOptimizer(self.learning_rate)
-        self.train_op = optimizer.apply_gradients(zip(clipped_gradients, parameters))
+        # Attention: here self.global_step will increment by one after the variables have been updated.
+        self.train_op = optimizer.apply_gradients(zip(clipped_gradients, parameters),global_step=self.global_step)
 
         summary_loss = tf.summary.scalar("training_loss",self.loss)
 
@@ -166,34 +160,35 @@ class Seq2seq(object):
 
         self.summaries = tf.summary.merge_all()
 
-def run_epoch(sess,reader,model,writer,global_step):
+def run_epoch(sess,reader,model,writer):
     result = reader.NextBatch('train') # modify the data set
     average_loss   = 0
     """modify this when change data set"""
-    for i in range(reader.train_batch_length): # modify this when change data set
-        idx,idy = result.__next__()
-        fd =reader.next_feed(model,idx,idy)
-        start = time.time()
-        _, l = sess.run([model.train_op, model.loss], fd)
-        average_loss+=l
-        end  =time.time()
-        if i % 20 == 0 :
-            #end  =time.time()
-            summa, predict_ , final_length,local_loss = sess.run([model.summaries,
-                                                                model.decoder_prediction,
-                                                                model.final_sequence_lengths,
-                                                                model.loss], fd)
-            writer.add_summary(summa)
-            src = [ reader.id_to_word(item,"src")  for item in idx[1]]
-            aim = [ reader.id_to_word(item,"des")  for item in idy[1]]
-            pre = [ reader.id_to_word(item,"des")  for item in predict_.T[1]]
-            print('step:{} , minibatch loss:{}'.format(i,l))
-            print('  src: {}'.format(' '.join(src)))
-            print('  aim: {}'.format(' '.join(aim)))
-            print('  pre: {}'.format(' '.join(pre[:final_length[1]])))
-            #start = time.time()
-        """modify this when change data set"""
-    return average_loss/(reader.train_batch_length)#
+    with sess.as_default():
+        for i in range(reader.train_batch_length): # modify this when change data set
+            idx,idy = result.__next__()
+            fd =reader.next_feed(model,idx,idy)
+            start = time.time()
+            _, l = sess.run([model.train_op, model.loss], fd)
+            average_loss+=l
+            end  =time.time()
+            if i % 20 == 0 :
+                #end  =time.time()
+                summa, predict_ , final_length,local_loss = sess.run([model.summaries,
+                                                                    model.decoder_prediction,
+                                                                    model.final_sequence_lengths,
+                                                                    model.loss], fd)
+                writer.add_summary(summa,global_step=model.global_step.eval())
+                src = [ reader.id_to_word(item,"src")  for item in idx[1]]
+                aim = [ reader.id_to_word(item,"des")  for item in idy[1]]
+                pre = [ reader.id_to_word(item,"des")  for item in predict_.T[1]]
+                print('step:{} , minibatch loss:{}'.format(model.global_step.eval(),l))
+                print('  src: {}'.format(' '.join(src)))
+                print('  aim: {}'.format(' '.join(aim)))
+                print('  pre: {}'.format(' '.join(pre[:final_length[1]])))
+                #start = time.time()
+            """modify this when change data set"""
+        return average_loss/(reader.train_batch_length)#
 def run_test(sess,reader,model):
     result = reader.NextBatch('test')
     average_loss   = 0
