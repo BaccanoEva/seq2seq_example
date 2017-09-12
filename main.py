@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import argparse
 import evalution_utils
-import scripts.princolor as ptf
+from scripts import color
 """parameter"""
 def add_arguments(parser):
     parser.add_argument("--src_language",type=str,default="cs",help="the source of language")
@@ -119,11 +119,11 @@ with sess.as_default():
         train_loss.append(avg_train_loss)
         rate = train_model.learning_rate.eval()
         end = time.time()
-        ptf('Epoch:{} used time :{} avg_train_loss is :{}'.format(
+        color.ptf('Epoch:{} used time :{} avg_train_loss is :{}'.format(
                                                         epoch,end-start,avg_train_loss),'warning')
 
         if epoch %5 ==0 :
-            ptf('learning_rate is rate:{}'.format(rate) + 'save model to > {}'.format(mode_restore_path) ,'warning')
+            color.ptf('learning_rate is rate:{}'.format(rate) + 'save model to > {}'.format(mode_restore_path) ,'warning')
             saver.save(sess,mode_restore_path,global_step = train_model.global_step.eval())
             #start = time.time()
             # get test_loss
@@ -137,7 +137,7 @@ with sess.as_default():
            model.run_inference(sess,train_reader,eval_model )
            #calcute the bleu
            score = evalution_utils.evaluate("nmt_data/tst2013"+ des_language , "nmt_output", "bleu", bpe_delimiter=None)
-           ptf("epoch:{} , bleu:{}".format(epoch,score),'bright')
+           color.ptf("epoch:{} , bleu:{}".format(epoch,score),'bright')
 
 # save figure
 plt.plot(test_loss)

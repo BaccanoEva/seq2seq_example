@@ -8,7 +8,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def princolor(sentence,state):
+def ptf(sentence,state):
     if state == 'warning':
         print(bcolors.WARNING + sentence + bcolors.ENDC)
     elif state == 'bright':
