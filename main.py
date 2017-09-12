@@ -6,21 +6,13 @@ import time
 import matplotlib.pyplot as plt
 import argparse
 import evalution_utils
+import scripts.princolor as ptf
 """parameter"""
 def add_arguments(parser):
     parser.add_argument("--src_language",type=str,default="cs",help="the source of language")
     parser.add_argument("--des_language",type=str,default="en",help="the target of language")
     parser.add_argument("--summary_path",type=str,default="translate_atten",help="the path of summary")
 """add color """
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 nmt_parser = argparse.ArgumentParser()
 add_arguments(nmt_parser)
@@ -127,13 +119,11 @@ with sess.as_default():
         train_loss.append(avg_train_loss)
         rate = train_model.learning_rate.eval()
         end = time.time()
-        print(bcolors.WARNING +'Epoch:{} used time :{} avg_train_loss is :{}'.format(
-                                                        epoch,end-start,avg_train_loss) +bcolors.ENDC)
+        ptf('Epoch:{} used time :{} avg_train_loss is :{}'.format(
+                                                        epoch,end-start,avg_train_loss),'warning')
+
         if epoch %5 ==0 :
-            print(bcolors.WARNING)
-            print('learning_rate is rate:{}'.format(rate))
-            print('save model to > {}'.format(mode_restore_path))
-            print(bcolors.ENDC)
+            ptf('learning_rate is rate:{}'.format(rate) + 'save model to > {}'.format(mode_restore_path) ,'warning')
             saver.save(sess,mode_restore_path,global_step = train_model.global_step.eval())
             #start = time.time()
             # get test_loss
@@ -147,7 +137,7 @@ with sess.as_default():
            model.run_inference(sess,train_reader,eval_model )
            #calcute the bleu
            score = evalution_utils.evaluate("nmt_data/tst2013"+ des_language , "nmt_output", "bleu", bpe_delimiter=None)
-           print(bcolors.OKGREEN +"epoch:{} , bleu:{}".format(epoch,score)+bcolors.ENDC)
+           ptf("epoch:{} , bleu:{}".format(epoch,score),'bright')
 
 # save figure
 plt.plot(test_loss)
