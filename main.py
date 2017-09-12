@@ -11,7 +11,16 @@ def add_arguments(parser):
     parser.add_argument("--src_language",type=str,default="cs",help="the source of language")
     parser.add_argument("--des_language",type=str,default="en",help="the target of language")
     parser.add_argument("--summary_path",type=str,default="translate_atten",help="the path of summary")
-
+"""add color """
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 nmt_parser = argparse.ArgumentParser()
 add_arguments(nmt_parser)
@@ -86,12 +95,12 @@ sess= tf.Session()
 saver = tf.train.Saver()
 """restore"""
 try:
-  ckpt_state = tf.train.get_checkpoint_state(mode_restore_path)
+  ckpt_state = tf.train.get_checkpoint_state("translate_atten/")
 except tf.errors.OutOfRangeError as e:
   tf.logging.error('Cannot restore checkpoint: %s', e)
 
 if ckpt_state != None :
-    tf.logging.info('Loading checkpoint %s', ckpt_state.model_checkpoint_path)
+    print('Loading checkpoint %s', ckpt_state.model_checkpoint_path)
     saver.restore(sess, ckpt_state.model_checkpoint_path)
 else:
     print("canot find model ,now start initializer variables")
@@ -118,25 +127,27 @@ with sess.as_default():
         train_loss.append(avg_train_loss)
         rate = train_model.learning_rate.eval()
         end = time.time()
-        print('Epoch:{} used time :{} avg_train_loss is :{}'.format(
-                                                        epoch,end-start,avg_train_loss))
+        print(bcolors.WARNING +'Epoch:{} used time :{} avg_train_loss is :{}'.format(
+                                                        epoch,end-start,avg_train_loss) +bcolors.ENDC)
         if epoch %5 ==0 :
+            print(bcolors.WARNING)
             print('learning_rate is rate:{}'.format(rate))
             print('save model to > {}'.format(mode_restore_path))
+            print(bcolors.ENDC)
             saver.save(sess,mode_restore_path,global_step = train_model.global_step.eval())
-            start = time.time()
+            #start = time.time()
             # get test_loss
-            avg_test_loss = model.run_test(sess,train_reader,eval_model)
-            test_loss.append(avg_test_loss)
-            end = time.time()
-            print('Test  used time :{} avg_test_loss is :{}'.format(
-                                                           end-start,avg_test_loss))
+            #avg_test_loss = model.run_test(sess,train_reader,eval_model)
+            #test_loss.append(avg_test_loss)
+            #end = time.time()
+            #print('Test  used time :{} avg_test_loss is :{}'.format(
+            #                                               end-start,avg_test_loss))
         if epoch %10 ==0:
            print("strart inference:{}".format(epoch))
            model.run_inference(sess,train_reader,eval_model )
            #calcute the bleu
-           score = evalution_utils.evaluate("nmt_data/tst2013."+ des_language , "nmt_output", "bleu", bpe_delimiter=None)
-           print("epoch:{} , bleu:{}".format(epoch,score))
+           score = evalution_utils.evaluate("nmt_data/tst2013"+ des_language , "nmt_output", "bleu", bpe_delimiter=None)
+           print(bcolors.OKGREEN +"epoch:{} , bleu:{}".format(epoch,score)+bcolors.ENDC)
 
 # save figure
 plt.plot(test_loss)
