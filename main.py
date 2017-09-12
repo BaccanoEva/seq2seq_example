@@ -5,6 +5,7 @@ import os
 import time
 import matplotlib.pyplot as plt
 import argparse
+import evalution_utils
 """parameter"""
 def add_arguments(parser):
     parser.add_argument("--src_language",type=str,default="cs",help="the source of language")
@@ -17,6 +18,7 @@ add_arguments(nmt_parser)
 args = nmt_parser.parse_args()
 
 #TODO: convert these variables to parameters
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2' # close warning
 batch_size = 20
 max_time_step = 150 # also is the max length of the sentence
 input_embedding_size =100
@@ -24,8 +26,8 @@ encoder_hidden_units= 100
 attention_unites = 100
 decoder_hidden_units = encoder_hidden_units
 summary_path = args.summary_path
-mode_restore_path = os.path.join(args.summary_path,"model/model.ckpt")
-#mode_restore_path = 'translate_atten/model/model.ckpt'
+#mode_restore_path = os.path.join(args.summary_path,"model/model.ckpt")
+mode_restore_path = 'translate_atten/model'
 
 learning_rate= 0.0001
 layer = 2
@@ -84,10 +86,14 @@ sess= tf.Session()
 saver = tf.train.Saver()
 """restore"""
 try:
-    print("restore model...")
-    #saver.restore(sess, "save_path/file_name.ckpt-???")
-    saver.restore(sess,mode_restore_path+"-25")
-except:
+  ckpt_state = tf.train.get_checkpoint_state(mode_restore_path)
+except tf.errors.OutOfRangeError as e:
+  tf.logging.error('Cannot restore checkpoint: %s', e)
+
+if ckpt_state != None :
+    tf.logging.info('Loading checkpoint %s', ckpt_state.model_checkpoint_path)
+    saver.restore(sess, ckpt_state.model_checkpoint_path)
+else:
     print("canot find model ,now start initializer variables")
     sess.run(tf.global_variables_initializer())
 """save graph"""
@@ -126,7 +132,12 @@ with sess.as_default():
             print('Test  used time :{} avg_test_loss is :{}'.format(
                                                            end-start,avg_test_loss))
         if epoch %10 ==0:
-            model.run_inference(sess,train_reader,eval_model )
+           print("strart inference:{}".format(epoch))
+           model.run_inference(sess,train_reader,eval_model )
+           #calcute the bleu
+           score = evalution_utils.evaluate("nmt_data/tst2013."+ des_language , "nmt_output", "bleu", bpe_delimiter=None)
+           print("epoch:{} , bleu:{}".format(epoch,score))
+
 # save figure
 plt.plot(test_loss)
 plt.savefig('test_loss.png')

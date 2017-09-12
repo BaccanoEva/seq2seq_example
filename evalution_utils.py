@@ -147,5 +147,5 @@ def _moses_bleu(multi_bleu_script, tgt_test, trans_file, bpe_delimiter=None):
 
   return bleu_score
 if __name__ == "__main__":
-  score = evaluate("ref_file.txt", "output.txt", "bleu", bpe_delimiter=None)
+  score = evaluate("nmt_data/tst2013.en", "nmt_output", "bleu", bpe_delimiter=None)
   print("bleu:{}".format(score))

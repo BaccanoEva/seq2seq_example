@@ -1,9 +1,10 @@
 import  tensorflow as tf
 import data
 import os
+
 from tensorflow.python.layers import core as layers_core
 import time
-
+import codecs
 class Seq2seq(object):
     def __init__(self,max_time_step,batch_size,encoder_hidden_units,src_vocab,des_vocab,input_embedding_size
                  ,decoder_hidden_units,learning_rate,
@@ -106,6 +107,8 @@ class Seq2seq(object):
         # This is useless
         self.translations =tf.argmax(outputs.rnn_output,axis=2)
 
+        print('translations size:{}'.format(self.translations.get_shape ) )
+
         decoder_logits = outputs.rnn_output
         decoder_logits_T = tf.transpose(decoder_logits,[1,0,2])
         self.decoder_prediction = tf.argmax(decoder_logits_T, 2)
@@ -157,7 +160,6 @@ class Seq2seq(object):
         tf.summary.scalar("gradient_norm", gradient_norm)
         tf.summary.histogram("dec_lstm_cell.trainable_weights[0]",dec_lstm_cell.trainable_weights[0])
 
-
         self.summaries = tf.summary.merge_all()
 
 def run_epoch(sess,reader,model,writer):
@@ -193,7 +195,7 @@ def run_test(sess,reader,model):
     result = reader.NextBatch('test')
     average_loss   = 0
     start = time.time()
-    for i in range(reader.dev_batch_length ):
+    for i in range(reader.test_batch_length ):
         idx,idy = result.__next__()
         fd =reader.next_feed(model,idx,idy)
         l = sess.run(model.loss, fd)
@@ -201,12 +203,18 @@ def run_test(sess,reader,model):
     return average_loss/(reader.dev_batch_length)
 def run_inference(sess,reader,model):
     result = reader.NextBatch('dev')
-    idx,idy = result.__next__()
-    fd =reader.next_feed(model,idx,idy)
-    translations = sess.run([model.translations], fd)
+    with codecs.open("nmt_output","w","utf8") as fp:
+            for i in range(reader.dev_batch_length ):
+                idx,idy = result.__next__()
+                fd =reader.next_feed(model,idx,idy)
+                translations = sess.run([model.translations], fd)
+                for index in range(len(idx)):
+                   temp = [ reader.id_to_word(item,'des')  for item in translations[0][index]]
+                   fp.write(" ".join(temp) + '\n')
+
     src = [ reader.id_to_word(item,'src')  for item in idx[0]]
     aim = [ reader.id_to_word(item,'des')  for item in idy[0]]
-    pre = [ reader.id_to_word(item,'src')  for item in translations[0][0]]
+    pre = [ reader.id_to_word(item,'des')  for item in translations[0][0]]
     print('\nInference\n')
     print('  src: {}'.format(' '.join(src)))
     print('  aim: {}'.format(' '.join(aim)))
