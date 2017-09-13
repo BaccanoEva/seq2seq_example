@@ -28,7 +28,7 @@ attention_unites = 100
 decoder_hidden_units = encoder_hidden_units
 summary_path = args.summary_path
 #mode_restore_path = os.path.join(args.summary_path,"model/model.ckpt")
-mode_restore_path = 'translate_atten/model'
+mode_restore_path = 'translate_atten/model/'
 
 learning_rate= 0.0001
 layer = 2
@@ -87,12 +87,12 @@ sess= tf.Session()
 saver = tf.train.Saver()
 """restore"""
 try:
-  ckpt_state = tf.train.get_checkpoint_state("translate_atten/")
+  ckpt_state = tf.train.get_checkpoint_state(mode_restore_path)
 except tf.errors.OutOfRangeError as e:
   tf.logging.error('Cannot restore checkpoint: %s', e)
 
 if ckpt_state != None :
-    print('Loading checkpoint %s', ckpt_state.model_checkpoint_path)
+    print('Loading checkpoint', ckpt_state.model_checkpoint_path)
     saver.restore(sess, ckpt_state.model_checkpoint_path)
 else:
     print("canot find model ,now start initializer variables")

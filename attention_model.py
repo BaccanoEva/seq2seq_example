@@ -5,6 +5,7 @@ import os
 from tensorflow.python.layers import core as layers_core
 import time
 import codecs
+import re
 class Seq2seq(object):
     def __init__(self,max_time_step,batch_size,encoder_hidden_units,src_vocab,des_vocab,input_embedding_size
                  ,decoder_hidden_units,learning_rate,
@@ -50,7 +51,7 @@ class Seq2seq(object):
         self.global_step = tf.Variable(0, trainable=False)
         self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
                                                    global_step=self.global_step,
-                                                   decay_steps=500,decay_rate=0.9)
+                                                   decay_steps=500,decay_rate=1)
         """Embedding"""
         encoder_inputs_embedded = tf.nn.embedding_lookup(self.encoder_embeddings, self.encoder_inputs)
         decoder_inputs_embedded = tf.nn.embedding_lookup(self.decoder_embeddings, self.decoder_inputs)
@@ -210,7 +211,13 @@ def run_inference(sess,reader,model):
                 translations = sess.run([model.translations], fd)
                 for index in range(len(idx)):
                    temp = [ reader.id_to_word(item,'des')  for item in translations[0][index]]
-                   fp.write(" ".join(temp) + '\n')
+                   temp_str = " ".join(temp)
+                   pos = re.search("</s>",temp_str)
+                   if pos is None :
+                       fp.write(temp_str + '\n')
+                   else:
+                       fp.write(temp_str[:pos.start()] + '\n')
+
 
     src = [ reader.id_to_word(item,'src')  for item in idx[0]]
     aim = [ reader.id_to_word(item,'des')  for item in idy[0]]
